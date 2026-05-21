@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Lead, CustomField, Opportunity } from "./types";
 import axios from "axios";
+import { EditOpportunityModal } from "./edit-opportunity-modal";
 
 export const LeadRow: React.FC<{ lead: Lead; onUpdate: () => void }> = ({ lead, onUpdate }) => {
     const [isEditing, setIsEditing] = useState(false);
@@ -12,6 +13,7 @@ export const LeadRow: React.FC<{ lead: Lead; onUpdate: () => void }> = ({ lead, 
     const [customFields, setCustomFields] = useState<CustomField[]>([]);
     const [customFieldValues, setCustomFieldValues] = useState<Record<string, string>>(lead.customFields || {});
     const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
+    const [editingOpportunity, setEditingOpportunity] = useState<Opportunity | null>(null);
     const [error, setError] = useState("");
     const [success, setSuccess] = useState(false);
     const [loading, setLoading] = useState(false);
@@ -62,11 +64,6 @@ export const LeadRow: React.FC<{ lead: Lead; onUpdate: () => void }> = ({ lead, 
 
     const deleteOpportunity = async (oppId: number) => {
         await axios.delete(`/api/opportunities/${oppId}`);
-        fetchOpportunities();
-    };
-
-    const updateExpectedCloseDate = async (oppId: number, expectedCloseDate: string | null) => {
-        await axios.put(`/api/opportunities/${oppId}`, { expectedCloseDate });
         fetchOpportunities();
     };
 
@@ -164,24 +161,24 @@ export const LeadRow: React.FC<{ lead: Lead; onUpdate: () => void }> = ({ lead, 
                                                 <span className="text-sm text-gray-500 ml-2">
                                                     Expected: {formatCurrency(opp.value * opp.stage.conversionLikelihood)}
                                                 </span>
-                                                <label className="text-sm text-gray-600 ml-2 inline-flex items-center gap-1">
-                                                    Close:
-                                                    <input
-                                                        type="date"
-                                                        value={opp.expectedCloseDate ?? ""}
-                                                        onChange={e =>
-                                                            updateExpectedCloseDate(opp.id, e.target.value || null)
-                                                        }
-                                                        className="border border-gray-300 rounded px-1 py-0.5 text-sm"
-                                                    />
-                                                </label>
+                                                {opp.expectedCloseDate && (
+                                                    <span className="text-sm text-gray-600 ml-2">Close: {opp.expectedCloseDate}</span>
+                                                )}
                                             </div>
-                                            <button
-                                                onClick={() => deleteOpportunity(opp.id)}
-                                                className="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600 text-sm"
-                                            >
-                                                Delete
-                                            </button>
+                                            <div className="flex gap-2">
+                                                <button
+                                                    onClick={() => setEditingOpportunity(opp)}
+                                                    className="bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600 text-sm"
+                                                >
+                                                    Edit
+                                                </button>
+                                                <button
+                                                    onClick={() => deleteOpportunity(opp.id)}
+                                                    className="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600 text-sm"
+                                                >
+                                                    Delete
+                                                </button>
+                                            </div>
                                         </div>
                                     ))}
                                 </div>
@@ -189,6 +186,13 @@ export const LeadRow: React.FC<{ lead: Lead; onUpdate: () => void }> = ({ lead, 
                         </div>
                     </td>
                 </tr>
+            )}
+            {editingOpportunity && (
+                <EditOpportunityModal
+                    opportunity={editingOpportunity}
+                    onClose={() => setEditingOpportunity(null)}
+                    onSaved={fetchOpportunities}
+                />
             )}
         </>
     );
