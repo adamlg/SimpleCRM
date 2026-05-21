@@ -5,6 +5,7 @@ import { Stage } from "./entity/Stage";
 import { Opportunity } from "./entity/Opportunity";
 import { AppSetting } from "./entity/AppSetting";
 import { seedDatabase } from "./seed";
+import { isValidExpectedCloseDate } from "./domain/expectedCloseDate";
 import * as express from "express";
 
 const run = async () => {
@@ -162,6 +163,15 @@ const run = async () => {
         opp.value = req.body.value;
         opp.name = req.body.name;
         opp.customFields = req.body.customFields || {};
+
+        //TODO: put all domain validation & error messages into a registry & pipeline, instead of inlining here and below.
+        if ("expectedCloseDate" in req.body) {
+            if (!isValidExpectedCloseDate(req.body.expectedCloseDate)) {
+                res.status(400).json({ error: "expectedCloseDate must be YYYY-MM-DD or null" });
+                return;
+            }
+            opp.expectedCloseDate = req.body.expectedCloseDate;
+        }
         const likelihood =
             opp.stage.status === "won" ? wonLikelihood : opp.stage.status === "lost" ? lostLikelihood : opp.stage.conversionLikelihood;
         opp.expectedValue = opp.value * likelihood;
@@ -192,6 +202,13 @@ const run = async () => {
         }
         if (req.body.name !== undefined) opp.name = req.body.name;
         if (req.body.customFields) opp.customFields = req.body.customFields;
+        if ("expectedCloseDate" in req.body) {
+            if (!isValidExpectedCloseDate(req.body.expectedCloseDate)) {
+                res.status(400).json({ error: "expectedCloseDate must be YYYY-MM-DD or null" });
+                return;
+            }
+            opp.expectedCloseDate = req.body.expectedCloseDate;
+        }
         const likelihood =
             opp.stage.status === "won" ? wonLikelihood : opp.stage.status === "lost" ? lostLikelihood : opp.stage.conversionLikelihood;
         opp.expectedValue = opp.value * likelihood;

@@ -65,6 +65,11 @@ export const LeadRow: React.FC<{ lead: Lead; onUpdate: () => void }> = ({ lead, 
         fetchOpportunities();
     };
 
+    const updateExpectedCloseDate = async (oppId: number, expectedCloseDate: string | null) => {
+        await axios.put(`/api/opportunities/${oppId}`, { expectedCloseDate });
+        fetchOpportunities();
+    };
+
     const formatCurrency = (value: number) => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(value);
 
     if (isEditing) {
@@ -159,6 +164,17 @@ export const LeadRow: React.FC<{ lead: Lead; onUpdate: () => void }> = ({ lead, 
                                                 <span className="text-sm text-gray-500 ml-2">
                                                     Expected: {formatCurrency(opp.value * opp.stage.conversionLikelihood)}
                                                 </span>
+                                                <label className="text-sm text-gray-600 ml-2 inline-flex items-center gap-1">
+                                                    Close:
+                                                    <input
+                                                        type="date"
+                                                        value={opp.expectedCloseDate ?? ""}
+                                                        onChange={e =>
+                                                            updateExpectedCloseDate(opp.id, e.target.value || null)
+                                                        }
+                                                        className="border border-gray-300 rounded px-1 py-0.5 text-sm"
+                                                    />
+                                                </label>
                                             </div>
                                             <button
                                                 onClick={() => deleteOpportunity(opp.id)}

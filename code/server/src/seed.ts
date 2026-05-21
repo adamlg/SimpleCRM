@@ -12,6 +12,15 @@ const dealNames = ["Enterprise Deal", "Mid-Market Contract", "SMB Package", "Con
 const industries = ["Healthcare", "Finance", "Retail", "Manufacturing", "Tech"];
 const regionValues = ["NA", "EMEA", "APAC", "na", "North America", ""];
 
+function randomExpectedCloseDate(): string {
+    const d = new Date();
+    d.setDate(d.getDate() + Math.floor(Math.random() * 90) + 1);
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${y}-${m}-${day}`;
+}
+
 export async function seedDatabase({ clearFirst = false }: { clearFirst?: boolean } = {}) {
     const connection = AppDataSource;
 
@@ -88,6 +97,7 @@ export async function seedDatabase({ clearFirst = false }: { clearFirst?: boolea
             opp.stage = stages[Math.floor(Math.random() * stages.length)];
             opp.value = Math.floor(Math.random() * 95000) + 5000;
             opp.name = dealNames[Math.floor(Math.random() * dealNames.length)];
+            opp.expectedCloseDate = Math.random() < 0.8 ? randomExpectedCloseDate() : null;
             const region = regionValues[Math.floor(Math.random() * regionValues.length)];
             const rawHeadcount = Math.floor(Math.random() * 500) + 10;
             opp.customFields = {
