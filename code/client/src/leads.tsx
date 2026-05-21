@@ -18,7 +18,7 @@ export const Leads: React.FC<{ refreshTrigger?: number }> = ({ refreshTrigger = 
     return (
         <div className="w-full">
             <h2 className="text-xl font-fold">Leads</h2>
-            <table className="table-auto w-full">
+            <table className="table-auto w-full border-separate border-spacing-y-1">
                 <thead>
                     <tr>
                         <th></th>

@@ -20,17 +20,37 @@ function buildCustomFieldsPayload(
     return payload;
 }
 
-interface EditOpportunityModalProps {
-    opportunity: Opportunity;
+function buildPayload(
+    name: string,
+    value: string,
+    stageId: number,
+    expectedCloseDate: string,
+    fieldDefinitions: CustomField[],
+    customFieldValues: Record<string, string>
+) {
+    return {
+        name: name || undefined,
+        value: parseFloat(value),
+        stageId,
+        expectedCloseDate: expectedCloseDate || null,
+        customFields: buildCustomFieldsPayload(fieldDefinitions, customFieldValues),
+    };
+}
+
+interface OpportunityModalProps {
+    leadId: number;
+    opportunity?: Opportunity;
     onClose: () => void;
     onSaved: () => void;
 }
 
-export const EditOpportunityModal: React.FC<EditOpportunityModalProps> = ({ opportunity, onClose, onSaved }) => {
-    const [name, setName] = useState(opportunity.name ?? "");
-    const [value, setValue] = useState(String(opportunity.value));
-    const [stageId, setStageId] = useState(opportunity.stage.id);
-    const [expectedCloseDate, setExpectedCloseDate] = useState(opportunity.expectedCloseDate ?? "");
+export const OpportunityModal: React.FC<OpportunityModalProps> = ({ leadId, opportunity, onClose, onSaved }) => {
+    const isCreate = opportunity === undefined;
+
+    const [name, setName] = useState(opportunity?.name ?? "");
+    const [value, setValue] = useState(opportunity ? String(opportunity.value) : "");
+    const [stageId, setStageId] = useState(opportunity?.stage.id ?? 0);
+    const [expectedCloseDate, setExpectedCloseDate] = useState(opportunity?.expectedCloseDate ?? "");
     const [stages, setStages] = useState<Stage[]>([]);
     const [fieldDefinitions, setFieldDefinitions] = useState<CustomField[]>([]);
     const [customFieldValues, setCustomFieldValues] = useState<Record<string, string>>({});
@@ -40,17 +60,21 @@ export const EditOpportunityModal: React.FC<EditOpportunityModalProps> = ({ oppo
     useEffect(() => {
         const load = async () => {
             const [stagesRes, fieldsRes] = await Promise.all([axios.get("/api/stages"), axios.get("/api/custom-fields")]);
-            setStages(stagesRes.data);
+            const loadedStages: Stage[] = stagesRes.data;
+            setStages(loadedStages);
             const oppFields = fieldsRes.data.filter((f: CustomField) => (f.entity ?? "lead") === "opportunity");
             setFieldDefinitions(oppFields);
             const values: Record<string, string> = {};
             for (const field of oppFields) {
-                values[field.name] = customFieldInputValue(opportunity.customFields?.[field.name]);
+                values[field.name] = customFieldInputValue(opportunity?.customFields?.[field.name]);
             }
             setCustomFieldValues(values);
+            if (isCreate && loadedStages.length > 0) {
+                setStageId(loadedStages[0].id);
+            }
         };
         load();
-    }, [opportunity]);
+    }, [opportunity, isCreate]);
 
     const selectedStage = stages.find(s => s.id === stageId);
 
@@ -58,20 +82,20 @@ export const EditOpportunityModal: React.FC<EditOpportunityModalProps> = ({ oppo
         e.preventDefault();
         setLoading(true);
         setError("");
+        const payload = buildPayload(name, value, stageId, expectedCloseDate, fieldDefinitions, customFieldValues);
         try {
-            await axios.put(`/api/opportunities/${opportunity.id}`, {
-                name: name || undefined,
-                value: parseFloat(value),
-                stageId,
-                expectedCloseDate: expectedCloseDate || null,
-                customFields: buildCustomFieldsPayload(fieldDefinitions, customFieldValues),
-            });
+            if (isCreate) {
+                await axios.post("/api/opportunities", { ...payload, leadId });
+            } else {
+                await axios.put(`/api/opportunities/${opportunity.id}`, payload);
+            }
             onSaved();
             onClose();
         } catch (err) {
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const data = (err as any).response?.data;
-            setError(typeof data === "string" ? data : data?.error ?? "Failed to update opportunity");
+            const fallback = isCreate ? "Failed to create opportunity" : "Failed to update opportunity";
+            setError(typeof data === "string" ? data : data?.error ?? fallback);
         }
         setLoading(false);
     };
@@ -83,7 +107,7 @@ export const EditOpportunityModal: React.FC<EditOpportunityModalProps> = ({ oppo
                 onClick={e => e.stopPropagation()}
             >
                 <div className="flex justify-between items-center mb-4">
-                    <h2 className="text-xl font-bold">Edit Opportunity</h2>
+                    <h2 className="text-xl font-bold">{isCreate ? "Add Opportunity" : "Edit Opportunity"}</h2>
                     <button type="button" onClick={onClose} className="text-gray-500 hover:text-gray-700 text-2xl leading-none">
                         &times;
                     </button>
@@ -119,9 +143,10 @@ export const EditOpportunityModal: React.FC<EditOpportunityModalProps> = ({ oppo
                     <div>
                         <label className="block text-sm font-medium mb-1">Stage</label>
                         <select
-                            value={stageId}
+                            value={stageId || ""}
                             onChange={e => setStageId(Number(e.target.value))}
                             className="block w-full p-2 border border-gray-300 rounded"
+                            required
                         >
                             {stages.map(stage => (
                                 <option key={stage.id} value={stage.id}>
@@ -178,10 +203,10 @@ export const EditOpportunityModal: React.FC<EditOpportunityModalProps> = ({ oppo
                     <div className="flex gap-2 pt-2">
                         <button
                             type="submit"
-                            disabled={loading}
+                            disabled={loading || stages.length === 0}
                             className="flex-1 p-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:bg-gray-300"
                         >
-                            {loading ? "Saving…" : "Save"}
+                            {loading ? "Saving…" : isCreate ? "Create" : "Save"}
                         </button>
                         <button
                             type="button"
@@ -197,3 +222,6 @@ export const EditOpportunityModal: React.FC<EditOpportunityModalProps> = ({ oppo
         </div>
     );
 };
+
+/** @deprecated Use OpportunityModal */
+export const EditOpportunityModal = OpportunityModal;

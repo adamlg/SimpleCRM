@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Lead, CustomField, Opportunity } from "./types";
 import axios from "axios";
-import { EditOpportunityModal } from "./edit-opportunity-modal";
+import { OpportunityModal } from "./edit-opportunity-modal";
 
 export const LeadRow: React.FC<{ lead: Lead; onUpdate: () => void }> = ({ lead, onUpdate }) => {
     const [isEditing, setIsEditing] = useState(false);
@@ -13,7 +13,7 @@ export const LeadRow: React.FC<{ lead: Lead; onUpdate: () => void }> = ({ lead, 
     const [customFields, setCustomFields] = useState<CustomField[]>([]);
     const [customFieldValues, setCustomFieldValues] = useState<Record<string, string>>(lead.customFields || {});
     const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
-    const [editingOpportunity, setEditingOpportunity] = useState<Opportunity | null>(null);
+    const [opportunityModal, setOpportunityModal] = useState<Opportunity | "create" | null>(null);
     const [error, setError] = useState("");
     const [success, setSuccess] = useState(false);
     const [loading, setLoading] = useState(false);
@@ -72,7 +72,7 @@ export const LeadRow: React.FC<{ lead: Lead; onUpdate: () => void }> = ({ lead, 
     if (isEditing) {
         return (
             <tr>
-                <td colSpan={6}>
+                <td colSpan={6} className="py-1">
                     <form onSubmit={handleSubmit} className="space-y-4 p-4 rounded bg-gray-100 w-96">
                         <h2 className="text-xl font-fold">Edit</h2>
                         {error && <p className="text-red-500">{error}</p>}
@@ -132,16 +132,35 @@ export const LeadRow: React.FC<{ lead: Lead; onUpdate: () => void }> = ({ lead, 
     return (
         <>
             <tr key={lead.id}>
-                <td>
-                    <button onClick={() => setIsEditing(true)} className="mr-2">
-                        Edit
-                    </button>
-                    <button onClick={() => setShowOpps(!showOpps)}>{showOpps ? "Hide" : "Show"} Opps</button>
+                <td className="py-1 align-top">
+                    <div className="flex flex-wrap gap-3">
+                        <button
+                            type="button"
+                            onClick={() => setIsEditing(true)}
+                            className="bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600 text-sm"
+                        >
+                            Edit
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setOpportunityModal("create")}
+                            className="bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700 text-sm"
+                        >
+                            Add Opp
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setShowOpps(!showOpps)}
+                            className="bg-gray-200 text-gray-800 px-3 py-1 rounded hover:bg-gray-300 text-sm"
+                        >
+                            {showOpps ? "Hide" : "Show"} Opps
+                        </button>
+                    </div>
                 </td>
-                <td>{firstName}</td>
-                <td>{lastName}</td>
-                <td>{age}</td>
-                <td>{phoneNumber}</td>
+                <td className="py-1 align-top">{firstName}</td>
+                <td className="py-1 align-top">{lastName}</td>
+                <td className="py-1 align-top">{age}</td>
+                <td className="py-1 align-top">{phoneNumber}</td>
             </tr>
             {showOpps && (
                 <tr>
@@ -167,7 +186,7 @@ export const LeadRow: React.FC<{ lead: Lead; onUpdate: () => void }> = ({ lead, 
                                             </div>
                                             <div className="flex gap-2">
                                                 <button
-                                                    onClick={() => setEditingOpportunity(opp)}
+                                                    onClick={() => setOpportunityModal(opp)}
                                                     className="bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600 text-sm"
                                                 >
                                                     Edit
@@ -187,10 +206,11 @@ export const LeadRow: React.FC<{ lead: Lead; onUpdate: () => void }> = ({ lead, 
                     </td>
                 </tr>
             )}
-            {editingOpportunity && (
-                <EditOpportunityModal
-                    opportunity={editingOpportunity}
-                    onClose={() => setEditingOpportunity(null)}
+            {opportunityModal && (
+                <OpportunityModal
+                    leadId={lead.id}
+                    opportunity={opportunityModal === "create" ? undefined : opportunityModal}
+                    onClose={() => setOpportunityModal(null)}
                     onSaved={fetchOpportunities}
                 />
             )}
