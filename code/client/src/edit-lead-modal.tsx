@@ -1,56 +1,35 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
-import { CustomField, Opportunity, Stage } from "./types";
+import { CustomField, Lead } from "./types";
 function customFieldInputValue(value: unknown): string {
     if (value === undefined || value === null) return "";
     return String(value);
 }
 
-function buildCustomFieldsPayload(
+function buildLeadCustomFieldsPayload(
     fields: CustomField[],
     values: Record<string, string>
-): Record<string, string | number> {
-    const payload: Record<string, string | number> = {};
+): Record<string, string> {
+    const payload: Record<string, string> = {};
     for (const field of fields) {
         const raw = values[field.name] ?? "";
         if (raw === "") continue;
-        payload[field.name] = field.type === "number" ? Number(raw) : raw;
+        payload[field.name] = raw;
     }
     return payload;
 }
 
-function buildPayload(
-    name: string,
-    value: string,
-    stageId: number,
-    expectedCloseDate: string,
-    fieldDefinitions: CustomField[],
-    customFieldValues: Record<string, string>
-) {
-    return {
-        name: name || undefined,
-        value: parseFloat(value),
-        stageId,
-        expectedCloseDate: expectedCloseDate || null,
-        customFields: buildCustomFieldsPayload(fieldDefinitions, customFieldValues),
-    };
-}
-
-interface OpportunityModalProps {
-    leadId: number;
-    opportunity?: Opportunity;
+interface LeadModalProps {
+    lead: Lead;
     onClose: () => void;
     onSaved: () => void;
 }
 
-export const OpportunityModal: React.FC<OpportunityModalProps> = ({ leadId, opportunity, onClose, onSaved }) => {
-    const isCreate = opportunity === undefined;
-
-    const [name, setName] = useState(opportunity?.name ?? "");
-    const [value, setValue] = useState(opportunity ? String(opportunity.value) : "");
-    const [stageId, setStageId] = useState(opportunity?.stage.id ?? 0);
-    const [expectedCloseDate, setExpectedCloseDate] = useState(opportunity?.expectedCloseDate ?? "");
-    const [stages, setStages] = useState<Stage[]>([]);
+export const LeadModal: React.FC<LeadModalProps> = ({ lead, onClose, onSaved }) => {
+    const [firstName, setFirstName] = useState(lead.firstName);
+    const [lastName, setLastName] = useState(lead.lastName);
+    const [age, setAge] = useState(String(lead.age));
+    const [phoneNumber, setPhoneNumber] = useState(lead.phoneNumber);
     const [fieldDefinitions, setFieldDefinitions] = useState<CustomField[]>([]);
     const [customFieldValues, setCustomFieldValues] = useState<Record<string, string>>({});
     const [error, setError] = useState("");
@@ -58,43 +37,36 @@ export const OpportunityModal: React.FC<OpportunityModalProps> = ({ leadId, oppo
 
     useEffect(() => {
         const load = async () => {
-            const [stagesRes, fieldsRes] = await Promise.all([axios.get("/api/stages"), axios.get("/api/custom-fields")]);
-            const loadedStages: Stage[] = stagesRes.data;
-            setStages(loadedStages);
-            const oppFields = fieldsRes.data.filter((f: CustomField) => (f.entity ?? "lead") === "opportunity");
-            setFieldDefinitions(oppFields);
+            const fieldsRes = await axios.get("/api/custom-fields");
+            const leadFields = fieldsRes.data.filter((f: CustomField) => (f.entity ?? "lead") === "lead");
+            setFieldDefinitions(leadFields);
             const values: Record<string, string> = {};
-            for (const field of oppFields) {
-                values[field.name] = customFieldInputValue(opportunity?.customFields?.[field.name]);
+            for (const field of leadFields) {
+                values[field.name] = customFieldInputValue(lead.customFields?.[field.name]);
             }
             setCustomFieldValues(values);
-            if (isCreate && loadedStages.length > 0) {
-                setStageId(loadedStages[0].id);
-            }
         };
         load();
-    }, [opportunity, isCreate]);
-
-    const selectedStage = stages.find(s => s.id === stageId);
+    }, [lead]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
         setError("");
-        const payload = buildPayload(name, value, stageId, expectedCloseDate, fieldDefinitions, customFieldValues);
         try {
-            if (isCreate) {
-                await axios.post("/api/opportunities", { ...payload, leadId });
-            } else {
-                await axios.put(`/api/opportunities/${opportunity.id}`, payload);
-            }
+            await axios.put(`/api/leads/${lead.id}`, {
+                firstName,
+                lastName,
+                age,
+                phoneNumber,
+                customFields: buildLeadCustomFieldsPayload(fieldDefinitions, customFieldValues),
+            });
             onSaved();
             onClose();
         } catch (err) {
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const data = (err as any).response?.data;
-            const fallback = isCreate ? "Failed to create opportunity" : "Failed to update opportunity";
-            setError(typeof data === "string" ? data : data?.error ?? fallback);
+            setError(typeof data === "string" ? data : data?.error ?? "Failed to update lead");
         }
         setLoading(false);
     };
@@ -106,7 +78,7 @@ export const OpportunityModal: React.FC<OpportunityModalProps> = ({ leadId, oppo
                 onClick={e => e.stopPropagation()}
             >
                 <div className="flex justify-between items-center mb-4">
-                    <h2 className="text-xl font-bold">{isCreate ? "Add Opportunity" : "Edit Opportunity"}</h2>
+                    <h2 className="text-xl font-bold">Edit Lead</h2>
                     <button type="button" onClick={onClose} className="text-gray-500 hover:text-gray-700 text-2xl leading-none">
                         &times;
                     </button>
@@ -116,65 +88,47 @@ export const OpportunityModal: React.FC<OpportunityModalProps> = ({ leadId, oppo
                     {error && <p className="text-red-500 text-sm">{error}</p>}
 
                     <div>
-                        <label className="block text-sm font-medium mb-1">Deal name</label>
+                        <label className="block text-sm font-medium mb-1">First name</label>
                         <input
                             type="text"
-                            value={name}
-                            onChange={e => setName(e.target.value)}
-                            placeholder="Deal name"
-                            className="block w-full p-2 border border-gray-300 rounded"
-                        />
-                    </div>
-
-                    <div>
-                        <label className="block text-sm font-medium mb-1">Value ($)</label>
-                        <input
-                            type="number"
-                            min="0"
-                            step="1"
-                            value={value}
-                            onChange={e => setValue(e.target.value)}
+                            value={firstName}
+                            onChange={e => setFirstName(e.target.value)}
                             className="block w-full p-2 border border-gray-300 rounded"
                             required
                         />
                     </div>
 
                     <div>
-                        <label className="block text-sm font-medium mb-1">Stage</label>
-                        <select
-                            value={stageId || ""}
-                            onChange={e => setStageId(Number(e.target.value))}
+                        <label className="block text-sm font-medium mb-1">Last name</label>
+                        <input
+                            type="text"
+                            value={lastName}
+                            onChange={e => setLastName(e.target.value)}
                             className="block w-full p-2 border border-gray-300 rounded"
                             required
-                        >
-                            {stages.map(stage => (
-                                <option key={stage.id} value={stage.id}>
-                                    {stage.name} ({stage.status})
-                                </option>
-                            ))}
-                        </select>
-                        {selectedStage && (
-                            <p className="text-xs text-gray-500 mt-1">
-                                Status: {selectedStage.status} · {(selectedStage.conversionLikelihood * 100).toFixed(0)}% likelihood
-                            </p>
-                        )}
+                        />
                     </div>
 
                     <div>
-                        <label className="block text-sm font-medium mb-1">Expected close date</label>
+                        <label className="block text-sm font-medium mb-1">Age</label>
                         <input
-                            type="date"
-                            value={expectedCloseDate}
-                            onChange={e => setExpectedCloseDate(e.target.value)}
+                            type="text"
+                            value={age}
+                            onChange={e => setAge(e.target.value)}
                             className="block w-full p-2 border border-gray-300 rounded"
+                            required
                         />
-                        <button
-                            type="button"
-                            onClick={() => setExpectedCloseDate("")}
-                            className="text-xs text-gray-500 mt-1 hover:text-gray-700"
-                        >
-                            Clear date
-                        </button>
+                    </div>
+
+                    <div>
+                        <label className="block text-sm font-medium mb-1">Phone number</label>
+                        <input
+                            type="text"
+                            value={phoneNumber}
+                            onChange={e => setPhoneNumber(e.target.value)}
+                            className="block w-full p-2 border border-gray-300 rounded"
+                            required
+                        />
                     </div>
 
                     {fieldDefinitions.length > 0 && (
@@ -202,10 +156,10 @@ export const OpportunityModal: React.FC<OpportunityModalProps> = ({ leadId, oppo
                     <div className="flex gap-2 pt-2">
                         <button
                             type="submit"
-                            disabled={loading || stages.length === 0}
+                            disabled={loading}
                             className="flex-1 p-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:bg-gray-300"
                         >
-                            {loading ? "Saving…" : isCreate ? "Create" : "Save"}
+                            {loading ? "Saving…" : "Save"}
                         </button>
                         <button
                             type="button"
@@ -221,6 +175,3 @@ export const OpportunityModal: React.FC<OpportunityModalProps> = ({ leadId, oppo
         </div>
     );
 };
-
-/** @deprecated Use OpportunityModal */
-export const EditOpportunityModal = OpportunityModal;

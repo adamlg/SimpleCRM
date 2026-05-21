@@ -1,28 +1,14 @@
 import { useState, useEffect } from "react";
-import { Lead, CustomField, Opportunity } from "./types";
+import { Lead, Opportunity } from "./types";
 import axios from "axios";
 import { OpportunityModal } from "./edit-opportunity-modal";
+import { LeadModal } from "./edit-lead-modal";
 
 export const LeadRow: React.FC<{ lead: Lead; onUpdate: () => void }> = ({ lead, onUpdate }) => {
-    const [isEditing, setIsEditing] = useState(false);
+    const [showLeadModal, setShowLeadModal] = useState(false);
     const [showOpps, setShowOpps] = useState(false);
-    const [firstName, setFirstName] = useState(lead.firstName);
-    const [lastName, setLastName] = useState(lead.lastName);
-    const [age, setAge] = useState(`${lead.age}`);
-    const [phoneNumber, setPhoneNumber] = useState(lead.phoneNumber);
-    const [customFields, setCustomFields] = useState<CustomField[]>([]);
-    const [customFieldValues, setCustomFieldValues] = useState<Record<string, string>>(lead.customFields || {});
     const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
     const [opportunityModal, setOpportunityModal] = useState<Opportunity | "create" | null>(null);
-    const [error, setError] = useState("");
-    const [success, setSuccess] = useState(false);
-    const [loading, setLoading] = useState(false);
-
-    useEffect(() => {
-        if (isEditing) {
-            fetchCustomFields();
-        }
-    }, [isEditing]);
 
     useEffect(() => {
         if (showOpps) {
@@ -30,36 +16,9 @@ export const LeadRow: React.FC<{ lead: Lead; onUpdate: () => void }> = ({ lead, 
         }
     }, [showOpps]);
 
-    const fetchCustomFields = async () => {
-        const result = await axios.get("/api/custom-fields");
-        setCustomFields(result.data);
-    };
-
     const fetchOpportunities = async () => {
         const result = await axios.get("/api/opportunities");
         setOpportunities(result.data.filter((opp: Opportunity) => opp.lead.id === lead.id));
-    };
-
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setLoading(true);
-        setError("");
-        try {
-            await axios.put(`/api/leads/${lead.id}`, {
-                firstName,
-                lastName,
-                age,
-                phoneNumber,
-                customFields: customFieldValues,
-            });
-            setSuccess(true);
-            setIsEditing(false);
-            onUpdate();
-        } catch (error) {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            setError((error as any).response.data);
-        }
-        setLoading(false);
     };
 
     const deleteOpportunity = async (oppId: number) => {
@@ -69,66 +28,6 @@ export const LeadRow: React.FC<{ lead: Lead; onUpdate: () => void }> = ({ lead, 
 
     const formatCurrency = (value: number) => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(value);
 
-    if (isEditing) {
-        return (
-            <tr>
-                <td colSpan={6} className="py-1">
-                    <form onSubmit={handleSubmit} className="space-y-4 p-4 rounded bg-gray-100 w-96">
-                        <h2 className="text-xl font-fold">Edit</h2>
-                        {error && <p className="text-red-500">{error}</p>}
-                        {success && <p className="text-green-500">Lead updated successfully</p>}
-                        <input
-                            type="text"
-                            placeholder="First Name"
-                            value={firstName}
-                            onChange={e => setFirstName(e.target.value)}
-                            className="block w-full p-2 border border-gray-300 rounded"
-                        />
-                        <input
-                            type="text"
-                            placeholder="Last Name"
-                            value={lastName}
-                            onChange={e => setLastName(e.target.value)}
-                            className="block w-full p-2 border border-gray-300 rounded"
-                        />
-                        <input
-                            type="text"
-                            placeholder="Age"
-                            value={age}
-                            onChange={e => setAge(e.target.value)}
-                            className="block w-full p-2 border border-gray-300 rounded"
-                        />
-                        <input
-                            type="text"
-                            placeholder="Phone Number"
-                            value={phoneNumber}
-                            onChange={e => setPhoneNumber(e.target.value)}
-                            className="block w-full p-2 border border-gray-300 rounded"
-                        />
-                        {customFields.map(field => (
-                            <input
-                                key={field.id}
-                                type="text"
-                                placeholder={field.label}
-                                value={customFieldValues[field.name] || ""}
-                                onChange={e =>
-                                    setCustomFieldValues({
-                                        ...customFieldValues,
-                                        [field.name]: e.target.value,
-                                    })
-                                }
-                                className="block w-full p-2 border border-gray-300 rounded"
-                            />
-                        ))}
-                        <button type="submit" disabled={loading} className="block w-full p-2 bg-blue-500 text-white rounded">
-                            Update Lead
-                        </button>
-                    </form>
-                </td>
-            </tr>
-        );
-    }
-
     return (
         <>
             <tr key={lead.id}>
@@ -136,7 +35,7 @@ export const LeadRow: React.FC<{ lead: Lead; onUpdate: () => void }> = ({ lead, 
                     <div className="flex flex-wrap gap-3">
                         <button
                             type="button"
-                            onClick={() => setIsEditing(true)}
+                            onClick={() => setShowLeadModal(true)}
                             className="bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600 text-sm"
                         >
                             Edit
@@ -157,10 +56,10 @@ export const LeadRow: React.FC<{ lead: Lead; onUpdate: () => void }> = ({ lead, 
                         </button>
                     </div>
                 </td>
-                <td className="py-1 align-top">{firstName}</td>
-                <td className="py-1 align-top">{lastName}</td>
-                <td className="py-1 align-top">{age}</td>
-                <td className="py-1 align-top">{phoneNumber}</td>
+                <td className="py-1 align-top">{lead.firstName}</td>
+                <td className="py-1 align-top">{lead.lastName}</td>
+                <td className="py-1 align-top">{lead.age}</td>
+                <td className="py-1 align-top">{lead.phoneNumber}</td>
             </tr>
             {showOpps && (
                 <tr>
@@ -186,12 +85,14 @@ export const LeadRow: React.FC<{ lead: Lead; onUpdate: () => void }> = ({ lead, 
                                             </div>
                                             <div className="flex gap-2">
                                                 <button
+                                                    type="button"
                                                     onClick={() => setOpportunityModal(opp)}
                                                     className="bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600 text-sm"
                                                 >
                                                     Edit
                                                 </button>
                                                 <button
+                                                    type="button"
                                                     onClick={() => deleteOpportunity(opp.id)}
                                                     className="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600 text-sm"
                                                 >
@@ -205,6 +106,9 @@ export const LeadRow: React.FC<{ lead: Lead; onUpdate: () => void }> = ({ lead, 
                         </div>
                     </td>
                 </tr>
+            )}
+            {showLeadModal && (
+                <LeadModal lead={lead} onClose={() => setShowLeadModal(false)} onSaved={onUpdate} />
             )}
             {opportunityModal && (
                 <OpportunityModal
