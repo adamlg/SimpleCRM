@@ -76,9 +76,13 @@ export const LeadModal: React.FC<LeadModalProps> = ({ lead, onClose, onSaved }) 
             <div
                 className="bg-white rounded-lg shadow-lg w-full max-w-md max-h-[90vh] overflow-y-auto overscroll-contain m-4 p-6"
                 onClick={e => e.stopPropagation()}
+                role="dialog"
+                aria-labelledby="edit-lead-title"
             >
                 <div className="flex justify-between items-center mb-4">
-                    <h2 className="text-xl font-bold">Edit Lead</h2>
+                    <h2 id="edit-lead-title" className="text-xl font-bold">
+                        Edit Lead
+                    </h2>
                     <button type="button" onClick={onClose} className="text-gray-500 hover:text-gray-700 text-2xl leading-none">
                         &times;
                     </button>

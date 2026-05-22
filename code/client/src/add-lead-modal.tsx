@@ -82,8 +82,11 @@ export const AddLeadModal: React.FC<AddLeadModalProps> = ({ onClose, onAdded, fi
                     {error && <p className="text-red-500 text-sm">{error}</p>}
 
                     <div>
-                        <label className="block text-sm font-medium mb-1">First name</label>
+                        <label htmlFor="add-lead-first-name" className="block text-sm font-medium mb-1">
+                            First name
+                        </label>
                         <input
+                            id="add-lead-first-name"
                             type="text"
                             placeholder="First Name"
                             value={firstName}
@@ -93,8 +96,11 @@ export const AddLeadModal: React.FC<AddLeadModalProps> = ({ onClose, onAdded, fi
                     </div>
 
                     <div>
-                        <label className="block text-sm font-medium mb-1">Last name</label>
+                        <label htmlFor="add-lead-last-name" className="block text-sm font-medium mb-1">
+                            Last name
+                        </label>
                         <input
+                            id="add-lead-last-name"
                             type="text"
                             placeholder="Last Name"
                             value={lastName}
@@ -104,8 +110,11 @@ export const AddLeadModal: React.FC<AddLeadModalProps> = ({ onClose, onAdded, fi
                     </div>
 
                     <div>
-                        <label className="block text-sm font-medium mb-1">Age</label>
+                        <label htmlFor="add-lead-age" className="block text-sm font-medium mb-1">
+                            Age
+                        </label>
                         <input
+                            id="add-lead-age"
                             type="text"
                             placeholder="Age"
                             value={age}
@@ -115,8 +124,11 @@ export const AddLeadModal: React.FC<AddLeadModalProps> = ({ onClose, onAdded, fi
                     </div>
 
                     <div>
-                        <label className="block text-sm font-medium mb-1">Phone number</label>
+                        <label htmlFor="add-lead-phone" className="block text-sm font-medium mb-1">
+                            Phone number
+                        </label>
                         <input
+                            id="add-lead-phone"
                             type="text"
                             placeholder="Phone Number"
                             value={phoneNumber}

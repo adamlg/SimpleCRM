@@ -8,7 +8,7 @@ import { AppSetting } from "./entity/AppSetting";
 
 export const AppDataSource = new DataSource({
     type: "sqlite",
-    database: "database.sqlite",
+    database: process.env.DATABASE_PATH ?? "database.sqlite",
     synchronize: true,
     logging: false,
     entities: [Lead, CustomField, Stage, Opportunity, AppSetting],

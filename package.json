@@ -7,14 +7,16 @@
     },
     "workspaces": [
         "code/client",
-        "code/server"
+        "code/server",
+        "code/e2e"
     ],
     "scripts": {
         "dev": "concurrently -k -n client,server -c blue,magenta \"npm run dev -w @simple-crm/client\" \"npm run dev -w @simple-crm/server\"",
         "build": "npm run build --workspaces --if-present",
         "typecheck": "npm run typecheck --workspaces --if-present",
         "lint": "npm run lint --workspaces --if-present",
-        "test": "npm run test --workspaces --if-present"
+        "test": "npm run test --workspaces --if-present",
+        "test:e2e": "npm run test -w @simple-crm/e2e"
     },
     "devDependencies": {
         "concurrently": "^9.1.0"

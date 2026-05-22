@@ -1,0 +1,15 @@
+{
+    "name": "@simple-crm/e2e",
+    "version": "0.1.0",
+    "private": true,
+    "type": "module",
+    "scripts": {
+        "install:browsers": "playwright install chromium",
+        "pretest": "npm run install:browsers",
+        "test": "playwright test",
+        "test:ui": "playwright test --ui"
+    },
+    "devDependencies": {
+        "@playwright/test": "^1.52.0"
+    }
+}

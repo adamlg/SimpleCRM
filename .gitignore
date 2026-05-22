@@ -21,6 +21,10 @@ build
 
 # Local data
 database.sqlite
+code/e2e/.test-db.sqlite
+code/e2e/test-results/
+code/e2e/playwright-report/
+code/e2e/blob-report/
 dump.rdb
 coverage/
 .nyc_output/

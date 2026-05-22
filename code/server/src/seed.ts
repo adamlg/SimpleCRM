@@ -21,7 +21,10 @@ function randomExpectedCloseDate(): string {
     return `${y}-${m}-${day}`;
 }
 
-export async function seedDatabase({ clearFirst = false }: { clearFirst?: boolean } = {}) {
+export async function seedDatabase({
+    clearFirst = false,
+    minimal = false,
+}: { clearFirst?: boolean; minimal?: boolean } = {}) {
     const connection = AppDataSource;
 
     if (clearFirst) {
@@ -74,6 +77,11 @@ export async function seedDatabase({ clearFirst = false }: { clearFirst?: boolea
     );
 
     console.log(`✓ Created ${stages.length} stages`);
+
+    if (minimal) {
+        console.log("✓ Minimal seed complete (no leads or opportunities)");
+        return;
+    }
 
     const leads: Lead[] = [];
     for (let i = 0; i < 20; i++) {

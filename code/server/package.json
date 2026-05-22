@@ -10,7 +10,8 @@
         "build": "tsc -p .",
         "typecheck": "tsc -p . --noEmit",
         "typeorm": "typeorm-ts-node-commonjs",
-        "seed": "ts-node --transpile-only src/seed.ts"
+        "seed": "ts-node --transpile-only src/seed.ts",
+        "start:e2e": "E2E=1 ts-node --transpile-only src/index.ts"
     },
     "dependencies": {
         "express": "^5.0.0",

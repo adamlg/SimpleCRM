@@ -15,7 +15,8 @@ import * as express from "express";
 
 const run = async () => {
     await AppDataSource.initialize();
-    await seedDatabase();
+    const e2e = process.env.E2E === "1";
+    await seedDatabase({ clearFirst: e2e, minimal: e2e });
     const app = express();
     app.use(express.json());
 
@@ -313,8 +314,9 @@ const run = async () => {
         res.json({ totalValue, expectedValue, byStage });
     });
 
-    app.listen(3000, () => {
-        console.log("Server is running on http://localhost:3000");
+    const port = Number(process.env.PORT) || 3000;
+    app.listen(port, () => {
+        console.log(`Server is running on http://localhost:${port}`);
     });
 };
 
