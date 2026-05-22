@@ -31,8 +31,8 @@ export const LeadRow: React.FC<{ lead: Lead; onUpdate: () => void }> = ({ lead, 
     return (
         <>
             <tr key={lead.id}>
-                <td className="py-1 align-top">
-                    <div className="flex flex-wrap gap-3">
+                <td className="border p-2 align-top">
+                    <div className="flex flex-wrap gap-2">
                         <button
                             type="button"
                             onClick={() => setShowLeadModal(true)}
@@ -56,14 +56,14 @@ export const LeadRow: React.FC<{ lead: Lead; onUpdate: () => void }> = ({ lead, 
                         </button>
                     </div>
                 </td>
-                <td className="py-1 align-top">{lead.firstName}</td>
-                <td className="py-1 align-top">{lead.lastName}</td>
-                <td className="py-1 align-top">{lead.age}</td>
-                <td className="py-1 align-top">{lead.phoneNumber}</td>
+                <td className="border p-2 align-top">{lead.firstName}</td>
+                <td className="border p-2 align-top">{lead.lastName}</td>
+                <td className="border p-2 text-right align-top tabular-nums">{lead.age}</td>
+                <td className="border p-2 align-top">{lead.phoneNumber}</td>
             </tr>
             {showOpps && (
-                <tr>
-                    <td colSpan={5} className="p-4 bg-gray-50">
+                <tr className="bg-gray-50">
+                    <td colSpan={5} className="border p-2">
                         <div className="space-y-4">
                             <h3 className="font-bold">Opportunities</h3>
                             {opportunities.length === 0 ? (
@@ -71,12 +71,17 @@ export const LeadRow: React.FC<{ lead: Lead; onUpdate: () => void }> = ({ lead, 
                             ) : (
                                 <div className="space-y-2">
                                     {opportunities.map(opp => (
-                                        <div key={opp.id} className="flex justify-between items-center p-2 bg-white border rounded">
+                                        <div
+                                            key={opp.id}
+                                            className="flex justify-between items-center p-2 bg-white border border-gray-300 rounded"
+                                        >
                                             <div>
                                                 <span className="font-medium">{opp.name || "Unnamed"}</span>
                                                 <span className="text-sm text-gray-600 ml-2">{opp.stage.name}</span>
-                                                <span className="text-sm text-gray-600 ml-2">{formatCurrency(opp.value)}</span>
-                                                <span className="text-sm text-gray-500 ml-2">
+                                                <span className="text-sm font-mono text-gray-600 ml-2">
+                                                    {formatCurrency(opp.value)}
+                                                </span>
+                                                <span className="text-sm font-mono text-gray-500 ml-2">
                                                     Expected: {formatCurrency(opp.value * opp.stage.conversionLikelihood)}
                                                 </span>
                                                 {opp.expectedCloseDate && (

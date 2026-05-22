@@ -1,7 +1,42 @@
 import axios from "axios";
-import { Fragment, useCallback, useEffect, useState } from "react";
+import { Fragment, useCallback, useEffect, useState, type KeyboardEvent } from "react";
 import { OpportunityModal } from "./edit-opportunity-modal";
 import { CloseForecastBucket, CloseForecastGroup, CustomField, Opportunity } from "./types";
+
+function flyoutRowAriaLabel(label: string, count: number): string {
+    return `View ${count} ${count === 1 ? "opportunity" : "opportunities"} for ${label}`;
+}
+
+function handleFlyoutRowKeyDown(e: KeyboardEvent, onActivate: () => void) {
+    if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        onActivate();
+    }
+}
+
+function flyoutTargetRowClassName(options: {
+    clickable: boolean;
+    selected: boolean;
+    pastBucket?: boolean;
+    subRow?: boolean;
+    emphasized?: boolean;
+}): string {
+    const { clickable, selected, pastBucket, subRow, emphasized } = options;
+    if (!clickable) {
+        return "text-gray-400";
+    }
+    return [
+        "cursor-pointer border-l-4 border-l-blue-400 transition-colors",
+        "hover:bg-blue-50 hover:border-l-blue-600",
+        "focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-500",
+        selected ? "bg-blue-50 ring-2 ring-inset ring-blue-500 border-l-blue-600" : "",
+        !selected && subRow ? "bg-gray-50" : "",
+        !selected && pastBucket ? "bg-amber-50" : "",
+        !selected && emphasized ? "font-medium" : "",
+    ]
+        .filter(Boolean)
+        .join(" ");
+}
 
 // Flyout target: a close period, optionally narrowed to one custom-field value (group.key).
 // group null = parent row → API omits ?group and returns all opportunities in the period.
@@ -145,9 +180,15 @@ export const CloseForecast: React.FC = () => {
                 </div>
 
                 <table className="table-auto w-full border-collapse border border-gray-300">
+                    <caption className="caption-top text-left text-sm text-gray-600 mb-3">
+                        Click a row with opportunities to open the list in a side panel. Empty rows are not
+                        clickable.
+                    </caption>
                     <thead>
                         <tr className="bg-gray-100">
-                            <th className="border p-2 text-left">{groupByField ? "Close period / group" : "Close period"}</th>
+                            <th className="border p-2 text-left">
+                                {groupByField ? "Close period / group" : "Close period"}
+                            </th>
                             <th className="border p-2 text-right">Count</th>
                             <th className="border p-2 text-right">Expected value</th>
                         </tr>
@@ -157,42 +198,59 @@ export const CloseForecast: React.FC = () => {
                             const hasGroups = Boolean(bucket.groups?.length);
                             const parentSelected = isRowSelected(bucket.key, null);
                             const parentClickable = bucket.count > 0;
+                            const openParent = () => openSelection(bucket, null);
                             return (
                                 <Fragment key={bucket.key}>
                                     <tr
-                                        onClick={() => openSelection(bucket, null)}
-                                        className={[
-                                            bucket.key === "past" ? "bg-amber-50" : "",
-                                            parentSelected ? "ring-2 ring-inset ring-blue-500" : "",
-                                            parentClickable ? "cursor-pointer hover:bg-blue-50" : "",
-                                            hasGroups ? "font-medium" : "",
-                                        ]
-                                            .filter(Boolean)
-                                            .join(" ")}
+                                        className={flyoutTargetRowClassName({
+                                                clickable: parentClickable,
+                                                selected: parentSelected,
+                                                pastBucket: bucket.key === "past",
+                                                emphasized: hasGroups,
+                                            })}
+                                        onClick={parentClickable ? openParent : undefined}
+                                        onKeyDown={
+                                            parentClickable ? e => handleFlyoutRowKeyDown(e, openParent) : undefined
+                                        }
+                                        tabIndex={parentClickable ? 0 : undefined}
+                                        role={parentClickable ? "button" : undefined}
+                                        aria-label={
+                                            parentClickable ? flyoutRowAriaLabel(bucket.label, bucket.count) : undefined
+                                        }
                                     >
                                         <td className="border p-2">{bucket.label}</td>
-                                        <td className="border p-2 text-right">{bucket.count}</td>
-                                        <td className="border p-2 text-right font-mono font-bold">
+                                        <td className="border p-2 text-right tabular-nums">{bucket.count}</td>
+                                        <td className="border p-2 text-right font-mono font-bold tabular-nums">
                                             {formatCurrency(bucket.expectedValue)}
                                         </td>
                                     </tr>
                                     {bucket.groups?.map(group => {
                                         const groupSelected = isRowSelected(bucket.key, group.key);
                                         const groupClickable = group.count > 0;
+                                        const openGroup = () => openSelection(bucket, group);
                                         return (
                                             <tr
                                                 key={`${bucket.key}-${group.key}`}
-                                                onClick={() => openSelection(bucket, group)}
-                                                className={[
-                                                    groupSelected ? "ring-2 ring-inset ring-blue-500 bg-blue-50" : "bg-gray-50",
-                                                    groupClickable ? "cursor-pointer hover:bg-blue-100" : "",
-                                                ]
-                                                    .filter(Boolean)
-                                                    .join(" ")}
+                                                className={flyoutTargetRowClassName({
+                                                    clickable: groupClickable,
+                                                    selected: groupSelected,
+                                                    subRow: true,
+                                                })}
+                                                onClick={groupClickable ? openGroup : undefined}
+                                                onKeyDown={
+                                                    groupClickable ? e => handleFlyoutRowKeyDown(e, openGroup) : undefined
+                                                }
+                                                tabIndex={groupClickable ? 0 : undefined}
+                                                role={groupClickable ? "button" : undefined}
+                                                aria-label={
+                                                    groupClickable
+                                                        ? flyoutRowAriaLabel(group.label, group.count)
+                                                        : undefined
+                                                }
                                             >
-                                                <td className="border p-2 pl-8 text-gray-700">{group.label}</td>
-                                                <td className="border p-2 text-right">{group.count}</td>
-                                                <td className="border p-2 text-right font-mono">
+                                                <td className="border p-2 pl-8">{group.label}</td>
+                                                <td className="border p-2 text-right tabular-nums">{group.count}</td>
+                                                <td className="border p-2 text-right font-mono tabular-nums">
                                                     {formatCurrency(group.expectedValue)}
                                                 </td>
                                             </tr>
