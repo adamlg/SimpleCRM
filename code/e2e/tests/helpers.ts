@@ -1,4 +1,4 @@
-import { expect, type Locator, type Page } from "@playwright/test";
+import { expect, type APIRequestContext, type Locator, type Page } from "@playwright/test";
 
 export type LeadDetails = {
     firstName: string;
@@ -19,6 +19,17 @@ function uniqueId(): string {
     return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
+export function uniqueSuffix(): string {
+    return uniqueId();
+}
+
+export async function resetE2eDb(request: APIRequestContext): Promise<void> {
+    const response = await request.post("/api/e2e/reset");
+    if (!response.ok()) {
+        throw new Error(`E2E reset failed: ${response.status()} ${await response.text()}`);
+    }
+}
+
 export function currentMonthLabel(date = new Date()): string {
     return new Intl.DateTimeFormat("en-US", { month: "long", year: "numeric" }).format(date);
 }
@@ -33,9 +44,34 @@ export function isoCloseDateInForecastMonth(): string {
     return `${year}-${month}-${day}`;
 }
 
-export function forecastMonthButton(page: Page, monthLabel: string): Locator {
-    const escaped = monthLabel.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    return page.getByRole("button", { name: new RegExp(`for ${escaped}$`, "i") });
+function forecastTable(page: Page): Locator {
+    return page.getByRole("table", {
+        name: /Click a row with opportunities to open the list in a side panel/i,
+    });
+}
+
+/** Clickable forecast bucket/group row (a <tr> with tabindex, not a <button>). */
+export function forecastClickableRow(page: Page, periodOrGroupLabel: string): Locator {
+    return forecastTable(page)
+        .locator('tbody tr[tabindex="0"]')
+        .filter({ has: page.getByRole("cell", { name: periodOrGroupLabel, exact: true }) });
+}
+
+/** Group row nested under a specific close-period bucket (avoids duplicate labels across months). */
+export function forecastClickableGroupRow(page: Page, bucketLabel: string, groupLabel: string): Locator {
+    const bucketRow = forecastTable(page)
+        .locator("tbody tr")
+        .filter({ has: page.getByRole("cell", { name: bucketLabel, exact: true }) })
+        .first();
+    return bucketRow
+        .locator("xpath=following-sibling::tr[@tabindex='0'][.//td[contains(@class,'pl-8')]]")
+        .filter({ has: page.getByRole("cell", { name: groupLabel, exact: true }) })
+        .first();
+}
+
+export async function waitForForecastTable(page: Page): Promise<void> {
+    await expect(page.getByText("Loading forecast...")).not.toBeVisible({ timeout: 15_000 });
+    await expect(forecastTable(page)).toBeVisible();
 }
 
 export async function goToHome(page: Page): Promise<void> {
@@ -47,6 +83,7 @@ export async function goToForecast(page: Page): Promise<void> {
     await page.goto("/");
     await page.getByRole("button", { name: "Forecast" }).click();
     await expect(page.getByRole("heading", { name: "Forecast by close month" })).toBeVisible();
+    await waitForForecastTable(page);
 }
 
 export async function createLeadViaUi(page: Page, overrides: Partial<LeadDetails> = {}): Promise<LeadDetails> {

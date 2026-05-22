@@ -314,6 +314,13 @@ const run = async () => {
         res.json({ totalValue, expectedValue, byStage });
     });
 
+    if (e2e) {
+        app.post("/e2e/reset", async (_req, res) => {
+            await seedDatabase({ clearFirst: true, minimal: true });
+            res.json({ ok: true });
+        });
+    }
+
     const port = Number(process.env.PORT) || 3000;
     app.listen(port, () => {
         console.log(`Server is running on http://localhost:${port}`);

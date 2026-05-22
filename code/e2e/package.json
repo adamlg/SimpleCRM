@@ -6,10 +6,10 @@
     "scripts": {
         "install:browsers": "playwright install chromium",
         "pretest": "npm run install:browsers",
-        "test": "playwright test",
-        "test:headed": "npm run install:browsers && playwright test --headed",
+        "test": "playwright test --project=chromium",
+        "test:headed": "npm run install:browsers && playwright test --project=chromium --headed",
         "test:watch": "npm run install:browsers && playwright test --project=chromium-watch",
-        "test:ui": "npm run install:browsers && playwright test --ui"
+        "test:ui": "npm run install:browsers && playwright test --ui --project=chromium"
     },
     "devDependencies": {
         "@playwright/test": "^1.52.0"
