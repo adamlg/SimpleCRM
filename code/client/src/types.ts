@@ -41,6 +41,13 @@ export interface AppSetting {
     value: string;
 }
 
+export interface CloseForecastBucket {
+    key: string;
+    label: string;
+    count: number;
+    expectedValue: number;
+}
+
 export interface PipelineReport {
     totalValue: number;
     expectedValue: number;

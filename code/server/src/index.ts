@@ -6,6 +6,7 @@ import { Opportunity } from "./entity/Opportunity";
 import { AppSetting } from "./entity/AppSetting";
 import { seedDatabase } from "./seed";
 import { isValidExpectedCloseDate } from "./domain/expectedCloseDate";
+import { getCloseForecast, getCloseForecastOpportunities } from "./domain/closeForecast";
 import * as express from "express";
 
 const run = async () => {
@@ -235,6 +236,27 @@ const run = async () => {
             await AppDataSource.manager.getRepository(Opportunity).delete(req.params.id);
         }
         res.json({ success: true });
+    });
+
+    app.get("/forecast-by-close/opportunities", async (req, res) => {
+        const bucket = req.query.bucket;
+        if (typeof bucket !== "string") {
+            res.status(400).json({ error: "bucket query parameter is required" });
+            return;
+        }
+        const includeClosed = req.query.includeClosed === "true";
+        try {
+            const opportunities = await getCloseForecastOpportunities(AppDataSource.manager, bucket, includeClosed);
+            res.json(opportunities);
+        } catch {
+            res.status(400).json({ error: "invalid bucket" });
+        }
+    });
+
+    app.get("/forecast-by-close", async (req, res) => {
+        const includeClosed = req.query.includeClosed === "true";
+        const buckets = await getCloseForecast(AppDataSource.manager, includeClosed);
+        res.json(buckets);
     });
 
     // Pipeline report endpoint
