@@ -11,11 +11,53 @@ export interface MonthBucket {
     month: number;
 }
 
+// Stable key for opportunities missing the grouped custom field (null, empty, or omitted on save).
+// Used in SQL, API responses, and drill-down ?group= so "no value" is explicit, not dropped.
+export const UNSET_GROUP_KEY = "__unset__";
+
+// Per-value breakdown within a close-month bucket when groupBy is active.
+export interface CloseForecastGroup {
+    key: string;
+    label: string;
+    count: number;
+    expectedValue: number;
+}
+
 export interface CloseForecastBucket {
     key: string;
     label: string;
     count: number;
     expectedValue: number;
+    // Present only when the client requested groupBy; parent row totals still sum all groups.
+    groups?: CloseForecastGroup[];
+}
+
+export function unsetGroupLabel(fieldLabel: string): string {
+    return `(No ${fieldLabel})`;
+}
+
+/**
+ * SQL expression that normalizes one opportunity custom field to a group key.
+ * fieldName must be validated against CustomField (opportunity entity) before interpolating —
+ * never pass raw user input here.
+ * CAST to TEXT so number fields (e.g. headcount) group consistently.
+ */
+export function buildGroupKeySql(fieldName: string): string {
+    const jsonPath = `$.${fieldName}`;
+    return `COALESCE(NULLIF(TRIM(CAST(json_extract(o.customFields, '${jsonPath}') AS TEXT)), ''), '${UNSET_GROUP_KEY}')`;
+}
+
+export function groupKeyToLabel(groupKey: string, fieldLabel: string): string {
+    return groupKey === UNSET_GROUP_KEY ? unsetGroupLabel(fieldLabel) : groupKey;
+}
+
+/** Alphabetical by label, with the "no value" bucket last so real values are easy to scan. */
+export function sortCloseForecastGroups(groups: CloseForecastGroup[]): CloseForecastGroup[] {
+    return [...groups].sort((a, b) => {
+        if (a.key === UNSET_GROUP_KEY) return 1;
+        if (b.key === UNSET_GROUP_KEY) return -1;
+        return a.label.localeCompare(b.label);
+    });
 }
 
 export function datePartsFromDate(date: Date): DateParts {

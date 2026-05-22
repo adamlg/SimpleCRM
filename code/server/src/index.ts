@@ -6,7 +6,11 @@ import { Opportunity } from "./entity/Opportunity";
 import { AppSetting } from "./entity/AppSetting";
 import { seedDatabase } from "./seed";
 import { isValidExpectedCloseDate } from "./domain/expectedCloseDate";
-import { getCloseForecast, getCloseForecastOpportunities } from "./domain/closeForecast";
+import {
+    getCloseForecast,
+    getCloseForecastOpportunities,
+    InvalidGroupByFieldError,
+} from "./domain/closeForecast";
 import * as express from "express";
 
 const run = async () => {
@@ -238,6 +242,7 @@ const run = async () => {
         res.json({ success: true });
     });
 
+    // Forecast drill-down: bucket (close period) required; groupBy/group optional for custom-field splits.
     app.get("/forecast-by-close/opportunities", async (req, res) => {
         const bucket = req.query.bucket;
         if (typeof bucket !== "string") {
@@ -245,18 +250,40 @@ const run = async () => {
             return;
         }
         const includeClosed = req.query.includeClosed === "true";
+        const groupBy = typeof req.query.groupBy === "string" ? req.query.groupBy : undefined;
+        const group = typeof req.query.group === "string" ? req.query.group : undefined;
         try {
-            const opportunities = await getCloseForecastOpportunities(AppDataSource.manager, bucket, includeClosed);
+            const opportunities = await getCloseForecastOpportunities(
+                AppDataSource.manager,
+                bucket,
+                includeClosed,
+                groupBy,
+                group
+            );
             res.json(opportunities);
-        } catch {
+        } catch (err) {
+            if (err instanceof InvalidGroupByFieldError) {
+                res.status(400).json({ error: "invalid groupBy field" });
+                return;
+            }
             res.status(400).json({ error: "invalid bucket" });
         }
     });
 
+    // Optional groupBy = opportunity custom field name; omit for the original flat table.
     app.get("/forecast-by-close", async (req, res) => {
         const includeClosed = req.query.includeClosed === "true";
-        const buckets = await getCloseForecast(AppDataSource.manager, includeClosed);
-        res.json(buckets);
+        const groupBy = typeof req.query.groupBy === "string" ? req.query.groupBy : undefined;
+        try {
+            const buckets = await getCloseForecast(AppDataSource.manager, includeClosed, groupBy);
+            res.json(buckets);
+        } catch (err) {
+            if (err instanceof InvalidGroupByFieldError) {
+                res.status(400).json({ error: "invalid groupBy field" });
+                return;
+            }
+            throw err;
+        }
     });
 
     // Pipeline report endpoint

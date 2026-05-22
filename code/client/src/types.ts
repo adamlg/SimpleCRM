@@ -41,11 +41,20 @@ export interface AppSetting {
     value: string;
 }
 
+/** Segment within a close period when forecast is grouped by an opportunity custom field. */
+export interface CloseForecastGroup {
+    key: string;
+    label: string;
+    count: number;
+    expectedValue: number;
+}
+
 export interface CloseForecastBucket {
     key: string;
     label: string;
     count: number;
     expectedValue: number;
+    groups?: CloseForecastGroup[];
 }
 
 export interface PipelineReport {

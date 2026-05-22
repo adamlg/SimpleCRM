@@ -1,33 +1,59 @@
 import axios from "axios";
-import { useCallback, useEffect, useState } from "react";
+import { Fragment, useCallback, useEffect, useState } from "react";
 import { OpportunityModal } from "./edit-opportunity-modal";
-import { CloseForecastBucket, Opportunity } from "./types";
+import { CloseForecastBucket, CloseForecastGroup, CustomField, Opportunity } from "./types";
+
+// Flyout target: a close period, optionally narrowed to one custom-field value (group.key).
+// group null = parent row → API omits ?group and returns all opportunities in the period.
+interface ForecastSelection {
+    bucket: CloseForecastBucket;
+    group: CloseForecastGroup | null;
+}
 
 export const CloseForecast: React.FC = () => {
     const [buckets, setBuckets] = useState<CloseForecastBucket[]>([]);
     const [includeClosed, setIncludeClosed] = useState(false);
+    const [groupByField, setGroupByField] = useState<string | null>(null);
+    const [opportunityFields, setOpportunityFields] = useState<CustomField[]>([]);
     const [loading, setLoading] = useState(true);
-    const [selectedBucket, setSelectedBucket] = useState<CloseForecastBucket | null>(null);
+    const [selection, setSelection] = useState<ForecastSelection | null>(null);
     const [bucketOpportunities, setBucketOpportunities] = useState<Opportunity[]>([]);
     const [loadingOpportunities, setLoadingOpportunities] = useState(false);
     const [editingOpportunity, setEditingOpportunity] = useState<Opportunity | null>(null);
 
+    useEffect(() => {
+        const loadFields = async () => {
+            const result = await axios.get("/api/custom-fields");
+            setOpportunityFields(result.data.filter((f: CustomField) => (f.entity ?? "lead") === "opportunity"));
+        };
+        loadFields();
+    }, []);
+
     const fetchForecast = useCallback(async () => {
         const result = await axios.get("/api/forecast-by-close", {
-            params: { includeClosed },
+            params: {
+                includeClosed,
+                ...(groupByField ? { groupBy: groupByField } : {}),
+            },
         });
         setBuckets(result.data);
-    }, [includeClosed]);
+    }, [includeClosed, groupByField]);
 
     const fetchBucketOpportunities = useCallback(async () => {
-        if (!selectedBucket) return;
+        if (!selection) return;
         setLoadingOpportunities(true);
         const result = await axios.get("/api/forecast-by-close/opportunities", {
-            params: { bucket: selectedBucket.key, includeClosed },
+            params: {
+                bucket: selection.bucket.key,
+                includeClosed,
+                // groupBy tells the server which field to use; group only when a sub-row was clicked.
+                ...(groupByField ? { groupBy: groupByField } : {}),
+                ...(selection.group ? { group: selection.group.key } : {}),
+            },
         });
         setBucketOpportunities(result.data);
         setLoadingOpportunities(false);
-    }, [selectedBucket, includeClosed]);
+    }, [selection, includeClosed, groupByField]);
 
     useEffect(() => {
         const load = async () => {
@@ -38,13 +64,18 @@ export const CloseForecast: React.FC = () => {
         load();
     }, [fetchForecast]);
 
+    // Changing filters invalidates the open flyout (bucket/group keys may no longer match).
     useEffect(() => {
-        if (!selectedBucket) {
+        setSelection(null);
+    }, [groupByField, includeClosed]);
+
+    useEffect(() => {
+        if (!selection) {
             setBucketOpportunities([]);
             return;
         }
         fetchBucketOpportunities();
-    }, [selectedBucket, fetchBucketOpportunities]);
+    }, [selection, fetchBucketOpportunities]);
 
     const handleOpportunitySaved = async () => {
         setEditingOpportunity(null);
@@ -53,12 +84,24 @@ export const CloseForecast: React.FC = () => {
 
     const formatCurrency = (value: number) => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(value);
 
-    const handleBucketClick = (bucket: CloseForecastBucket) => {
-        if (bucket.count === 0) return;
-        setSelectedBucket(bucket);
+    const openSelection = (bucket: CloseForecastBucket, group: CloseForecastGroup | null) => {
+        const count = group ? group.count : bucket.count;
+        if (count === 0) return;
+        setSelection({ bucket, group });
     };
 
-    const closeFlyout = () => setSelectedBucket(null);
+    const closeFlyout = () => setSelection(null);
+
+    const flyoutTitle = () => {
+        if (!selection) return "";
+        if (selection.group) return `${selection.bucket.label} · ${selection.group.label}`;
+        return selection.bucket.label;
+    };
+
+    const groupByLabel = groupByField ? opportunityFields.find(f => f.name === groupByField)?.label : null;
+
+    const isRowSelected = (bucketKey: string, groupKey: string | null) =>
+        selection?.bucket.key === bucketKey && (selection.group?.key ?? null) === groupKey;
 
     if (loading) return <p>Loading forecast...</p>;
 
@@ -69,49 +112,100 @@ export const CloseForecast: React.FC = () => {
                     <h2 className="text-2xl font-bold">Forecast by close month</h2>
                     <p className="text-sm text-gray-600 mt-1">
                         {includeClosed ? "Showing open & closed opportunities" : "Showing open opportunities only"}
+                        {groupByLabel && ` · Grouped by ${groupByLabel}`}
                     </p>
                 </div>
 
-                <label className="flex items-center gap-2 cursor-pointer">
-                    <input type="checkbox" checked={includeClosed} onChange={e => setIncludeClosed(e.target.checked)} className="rounded" />
-                    <span className="text-sm font-medium">Include closed opportunities</span>
-                </label>
+                <div className="flex flex-wrap items-center gap-6">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                            type="checkbox"
+                            checked={includeClosed}
+                            onChange={e => setIncludeClosed(e.target.checked)}
+                            className="rounded"
+                        />
+                        <span className="text-sm font-medium">Include closed opportunities</span>
+                    </label>
+
+                    <label className="flex items-center gap-2">
+                        <span className="text-sm font-medium">Group by</span>
+                        <select
+                            value={groupByField ?? ""}
+                            onChange={e => setGroupByField(e.target.value || null)}
+                            className="border rounded px-2 py-1 text-sm"
+                        >
+                            <option value="">No grouping</option>
+                            {opportunityFields.map(field => (
+                                <option key={field.id} value={field.name}>
+                                    {field.label}
+                                </option>
+                            ))}
+                        </select>
+                    </label>
+                </div>
 
                 <table className="table-auto w-full border-collapse border border-gray-300">
                     <thead>
                         <tr className="bg-gray-100">
-                            <th className="border p-2 text-left">Close period</th>
+                            <th className="border p-2 text-left">{groupByField ? "Close period / group" : "Close period"}</th>
                             <th className="border p-2 text-right">Count</th>
                             <th className="border p-2 text-right">Expected value</th>
                         </tr>
                     </thead>
                     <tbody>
                         {buckets.map(bucket => {
-                            const isSelected = selectedBucket?.key === bucket.key;
-                            const isClickable = bucket.count > 0;
+                            const hasGroups = Boolean(bucket.groups?.length);
+                            const parentSelected = isRowSelected(bucket.key, null);
+                            const parentClickable = bucket.count > 0;
                             return (
-                                <tr
-                                    key={bucket.key}
-                                    onClick={() => handleBucketClick(bucket)}
-                                    className={[
-                                        bucket.key === "past" ? "bg-amber-50" : "",
-                                        isSelected ? "ring-2 ring-inset ring-blue-500" : "",
-                                        isClickable ? "cursor-pointer hover:bg-blue-50" : "",
-                                    ]
-                                        .filter(Boolean)
-                                        .join(" ")}
-                                >
-                                    <td className="border p-2 font-medium">{bucket.label}</td>
-                                    <td className="border p-2 text-right">{bucket.count}</td>
-                                    <td className="border p-2 text-right font-mono font-bold">{formatCurrency(bucket.expectedValue)}</td>
-                                </tr>
+                                <Fragment key={bucket.key}>
+                                    <tr
+                                        onClick={() => openSelection(bucket, null)}
+                                        className={[
+                                            bucket.key === "past" ? "bg-amber-50" : "",
+                                            parentSelected ? "ring-2 ring-inset ring-blue-500" : "",
+                                            parentClickable ? "cursor-pointer hover:bg-blue-50" : "",
+                                            hasGroups ? "font-medium" : "",
+                                        ]
+                                            .filter(Boolean)
+                                            .join(" ")}
+                                    >
+                                        <td className="border p-2">{bucket.label}</td>
+                                        <td className="border p-2 text-right">{bucket.count}</td>
+                                        <td className="border p-2 text-right font-mono font-bold">
+                                            {formatCurrency(bucket.expectedValue)}
+                                        </td>
+                                    </tr>
+                                    {bucket.groups?.map(group => {
+                                        const groupSelected = isRowSelected(bucket.key, group.key);
+                                        const groupClickable = group.count > 0;
+                                        return (
+                                            <tr
+                                                key={`${bucket.key}-${group.key}`}
+                                                onClick={() => openSelection(bucket, group)}
+                                                className={[
+                                                    groupSelected ? "ring-2 ring-inset ring-blue-500 bg-blue-50" : "bg-gray-50",
+                                                    groupClickable ? "cursor-pointer hover:bg-blue-100" : "",
+                                                ]
+                                                    .filter(Boolean)
+                                                    .join(" ")}
+                                            >
+                                                <td className="border p-2 pl-8 text-gray-700">{group.label}</td>
+                                                <td className="border p-2 text-right">{group.count}</td>
+                                                <td className="border p-2 text-right font-mono">
+                                                    {formatCurrency(group.expectedValue)}
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
+                                </Fragment>
                             );
                         })}
                     </tbody>
                 </table>
             </div>
 
-            {selectedBucket && (
+            {selection && (
                 <>
                     <button
                         type="button"
@@ -126,7 +220,7 @@ export const CloseForecast: React.FC = () => {
                     >
                         <div className="flex items-center justify-between border-b border-gray-200 px-4 py-3">
                             <h3 id="forecast-flyout-title" className="text-lg font-bold">
-                                {selectedBucket.label}
+                                {flyoutTitle()}
                             </h3>
                             <button
                                 type="button"
@@ -156,6 +250,15 @@ export const CloseForecast: React.FC = () => {
                                                     {opp.lead.firstName} {opp.lead.lastName}
                                                 </p>
                                                 <p className="text-gray-600">{opp.stage.name}</p>
+                                                {groupByField && (
+                                                    <p className="text-gray-600">
+                                                        {groupByLabel}:{" "}
+                                                        {opp.customFields?.[groupByField] != null &&
+                                                        String(opp.customFields[groupByField]) !== ""
+                                                            ? String(opp.customFields[groupByField])
+                                                            : "—"}
+                                                    </p>
+                                                )}
                                                 <p className="font-mono">{formatCurrency(opp.value)}</p>
                                                 <p className="text-gray-500">Expected: {formatCurrency(opp.expectedValue ?? 0)}</p>
                                                 <p className="text-gray-600">Close: {opp.expectedCloseDate ?? "—"}</p>
