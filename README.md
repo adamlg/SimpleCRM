@@ -37,10 +37,19 @@ Open http://localhost:5173 in your browser.
 
 ## End-to-end tests
 
-Run tests (downloads Chromium automatically on first run via `pretest`; or install manually with `npm run install:browsers -w @simple-crm/e2e`):
+Tests run in a **headless** browser by default. To watch them:
+
+| Command | What it does |
+| --- | --- |
+| `npm run test:e2e` | Headless (CI-friendly) |
+| `npm run test:e2e:headed` | Visible Chromium window |
+| `npm run test:e2e:watch` | Visible browser, slowed (400ms between actions via `chromium-watch` project) |
+| `npm run test:e2e:ui` | Playwright UI — pick tests, step through, watch replay |
+
+Chromium is installed automatically before the default `test:e2e` run (`pretest`). For headed/UI modes, run once if needed: `npm run install:browsers -w @simple-crm/e2e`.
 
 ```sh
-npm run test:e2e
+npm run test:e2e:headed
 ```
 
 E2E runs use ports **3001** (API) and **5174** (client) so they do not conflict with `npm run dev`, a separate SQLite file (`code/e2e/.test-db.sqlite`), and a minimal seed (settings, custom fields, and stages only—no sample leads).

@@ -16,7 +16,10 @@
         "typecheck": "npm run typecheck --workspaces --if-present",
         "lint": "npm run lint --workspaces --if-present",
         "test": "npm run test --workspaces --if-present",
-        "test:e2e": "npm run test -w @simple-crm/e2e"
+        "test:e2e": "npm run test -w @simple-crm/e2e",
+        "test:e2e:headed": "npm run test:headed -w @simple-crm/e2e",
+        "test:e2e:watch": "npm run test:watch -w @simple-crm/e2e",
+        "test:e2e:ui": "npm run test:ui -w @simple-crm/e2e"
     },
     "devDependencies": {
         "concurrently": "^9.1.0"

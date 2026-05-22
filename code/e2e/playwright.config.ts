@@ -36,6 +36,14 @@ export default defineConfig({
             name: "chromium",
             use: { ...devices["Desktop Chrome"] },
         },
+        {
+            name: "chromium-watch",
+            use: {
+                ...devices["Desktop Chrome"],
+                headless: false,
+                launchOptions: { slowMo: 400 },
+            },
+        },
     ],
     webServer: [
         {
