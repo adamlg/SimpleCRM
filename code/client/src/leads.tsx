@@ -35,7 +35,7 @@ export const Leads: React.FC<{ refreshTrigger?: number }> = ({ refreshTrigger = 
                         <th className="border p-2 text-left">Actions</th>
                         <th className="border p-2 text-left">First Name</th>
                         <th className="border p-2 text-left">Last Name</th>
-                        <th className="border p-2 text-right">Age</th>
+                        <th className="border p-2 text-left">Age</th>
                         <th className="border p-2 text-left">Phone Number</th>
                     </tr>
                 </thead>

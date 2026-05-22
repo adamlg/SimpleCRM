@@ -58,7 +58,7 @@ export const LeadRow: React.FC<{ lead: Lead; onUpdate: () => void }> = ({ lead, 
                 </td>
                 <td className="border p-2 align-top">{lead.firstName}</td>
                 <td className="border p-2 align-top">{lead.lastName}</td>
-                <td className="border p-2 text-right align-top tabular-nums">{lead.age}</td>
+                <td className="border p-2 align-top">{lead.age}</td>
                 <td className="border p-2 align-top">{lead.phoneNumber}</td>
             </tr>
             {showOpps && (
